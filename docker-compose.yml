@@ -1,0 +1,103 @@
+services:
+  # ────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL
+  # ────────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: atena-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Porta 5432 não exposta ao host — acesso apenas interno via Docker network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Schema migration (idempotent — runs on every up)
+  # ────────────────────────────────────────────────────────────────────────────
+  db-migrate:
+    image: postgres:16-alpine
+    container_name: atena-db-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./db-init.sql:/db-init.sql:ro
+    command: >
+      psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /db-init.sql
+    restart: "no"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Backend – Spring Boot API
+  # ────────────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./AtenaEventsAPI
+      dockerfile: Dockerfile
+    container_name: atena-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      JWT_SECRET: ${JWT_SECRET}
+      API_URL: ${API_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      # Email — em produção, defina MAIL_* no .env apontando para um SMTP real.
+      # Em dev, o docker-compose.override.yml sobrescreve para o MailHog.
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@atenaevents.local}
+    # Porta 8080 acessível apenas internamente — Caddy faz o proxy externo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - caddy_net
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Frontend – React (Vite) servido com Nginx
+  # ────────────────────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./AtenaEvents-web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${API_URL}
+    container_name: atena-web
+    restart: unless-stopped
+    # Porta 3000 acessível apenas internamente — Caddy faz o proxy externo
+    depends_on:
+      - api
+    networks:
+      - default
+      - caddy_net
+
+volumes:
+  postgres_data:
+
+networks:
+  default: {}
+  caddy_net:
+    external: true

@@ -1,0 +1,17 @@
+# Environments
+.env
+.env.dev
+.env.prod
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+.claude/
+*.iml
+
+#Projects
+AtenaEvents*
