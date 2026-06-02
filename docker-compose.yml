@@ -81,7 +81,7 @@ services:
   # ────────────────────────────────────────────────────────────────────────────
   web:
     build:
-      context: ./AtenaEvents-web
+      context: ./AtenaEventsWeb
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${API_URL}

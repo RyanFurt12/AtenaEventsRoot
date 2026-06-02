@@ -3,7 +3,7 @@
 Aplicação full-stack de gestão de eventos.
 
 - **`AtenaEventsAPI/`** — API REST em Spring Boot 4 (Java 17) · [README](AtenaEventsAPI/README.md)
-- **`AtenaEvents-web/`** — SPA em React 19 + Vite, servida por Nginx · [README](AtenaEvents-web/README.md)
+- **`AtenaEventsWeb/`** — SPA em React 19 + Vite, servida por Nginx · [README](AtenaEventsWeb/README.md)
 - **PostgreSQL 16** — banco de dados
 - **MailHog** — servidor SMTP de desenvolvimento (apenas em dev)
 
@@ -190,7 +190,7 @@ docker compose down -v
 cd AtenaEventsAPI && ./mvnw package -DskipTests
 
 # Frontend — lint
-cd AtenaEvents-web && npm run lint
+cd AtenaEventsWeb && npm run lint
 ```
 
 ---

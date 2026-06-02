@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AtenaEvents is a full-stack event management application with two sub-projects:
 - `AtenaEventsAPI/` — Spring Boot 4 REST API (Java 17)
-- `AtenaEvents-web/` — React 19 + Vite SPA
+- `AtenaEventsWeb/` — React 19 + Vite SPA
 
 Infrastructure is orchestrated via `docker-compose.yml` at the root, which spins up PostgreSQL 16, the Spring Boot API, and the Nginx-served frontend.
 
@@ -31,7 +31,7 @@ Never use `./mvnw spring-boot:run` or `npm run dev` for testing. Always use `doc
 cd AtenaEventsAPI && ./mvnw package -DskipTests
 
 # Frontend — lint check
-cd AtenaEvents-web && npm run lint
+cd AtenaEventsWeb && npm run lint
 ```
 
 The API runs on `http://localhost:8080`. Swagger UI at `http://localhost:8080/swagger-ui/index.html`.
@@ -113,7 +113,7 @@ Images and avatars are stored as base64 strings in `TEXT` columns. OAuth avatars
 
 ---
 
-### Frontend — `AtenaEvents-web/`
+### Frontend — `AtenaEventsWeb/`
 
 React Router v7 SPA. No global state manager (no Redux/Zustand). Pages call API modules directly.
 
