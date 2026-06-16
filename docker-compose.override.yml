@@ -1,0 +1,31 @@
+# Configuração de desenvolvimento — aplicada automaticamente por `docker compose up`.
+# Publica as portas no host, cria a rede caddy_net localmente (sem Caddy) e sobe
+# o MailHog, que captura todos os emails. Em produção, ignore este arquivo com
+# `docker compose -f docker-compose.yml up`.
+
+services:
+  api:
+    ports:
+      - "8080:8080"
+    environment:
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
+
+  web:
+    ports:
+      - "3000:80"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: atena-mailhog
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+    networks:
+      - default
+
+networks:
+  caddy_net:
+    external: false

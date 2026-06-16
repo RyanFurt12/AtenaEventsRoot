@@ -2,7 +2,6 @@
 .env
 .env.dev
 .env.prod
-docker-compose.override.yml
 
 # OS
 .DS_Store

@@ -1,0 +1,121 @@
+# Deploy via setup.sh.
+# As imagens são carregadas em cada nó pelo setup.sh.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-atena_events}
+      POSTGRES_USER: ${POSTGRES_USER:-atena}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atena_secret}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - atena-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-atena_secret}
+    configs:
+      - source: atena_dbinit
+        target: /db-init.sql
+    command: >
+      sh -c "until pg_isready -h postgres -U ${POSTGRES_USER:-atena}; do
+               echo 'aguardando postgres...'; sleep 2; done;
+             psql -h postgres -U ${POSTGRES_USER:-atena} -d ${POSTGRES_DB:-atena_events} -f /db-init.sql"
+    networks:
+      - atena-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: none
+
+  api:
+    image: atena-api:latest
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-atena_events}
+      POSTGRES_USER: ${POSTGRES_USER:-atena}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-atena_secret}
+      SPRING_PROFILES_ACTIVE: prod
+      JWT_SECRET: ${JWT_SECRET:-troque_esta_chave_para_no_minimo_32_caracteres}
+      API_URL: ${API_URL:-http://localhost:8080}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-disabled}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-disabled}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-disabled}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-disabled}
+      
+      MAIL_HOST: ${MAIL_HOST:-mailhog}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-no-reply@atenaevents.local}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    networks:
+      - atena-net
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+
+  web:
+    image: atena-web:latest
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    networks:
+      - atena-net
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+
+  # MailHog — captura os emails enviados pela API (UI em :8025). Demo/dev.
+  # Em produção real, remova este serviço e aponte MAIL_* para um SMTP externo.
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "${MAILHOG_PORT:-8025}:8025"
+    networks:
+      - atena-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  visualizer:
+    image: dockersamples/visualizer:stable
+    ports:
+      - "${VIZ_PORT:-8088}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - atena-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+
+configs:
+  atena_dbinit:
+    external: true
+
+volumes:
+  pg_data:
+
+networks:
+  atena-net:
+    driver: overlay

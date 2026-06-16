@@ -1,0 +1,48 @@
+#Subir usando o setup.sh, para facilitar config
+services:
+  manager:
+    image: docker:27-dind
+    container_name: manager
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    ports:
+      - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
+      - "${API_PORT:-8080}:${API_PORT:-8080}"
+      - "${VIZ_PORT:-8088}:${VIZ_PORT:-8088}"
+      - "${MAILHOG_PORT:-8025}:${MAILHOG_PORT:-8025}"
+    volumes:
+      - manager_data:/var/lib/docker
+    networks:
+      - swarm-net
+
+  worker1:
+    image: docker:27-dind
+    container_name: worker1
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    volumes:
+      - worker1_data:/var/lib/docker
+    networks:
+      - swarm-net
+
+  worker2:
+    image: docker:27-dind
+    container_name: worker2
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    volumes:
+      - worker2_data:/var/lib/docker
+    networks:
+      - swarm-net
+
+volumes:
+  manager_data:
+  worker1_data:
+  worker2_data:
+
+networks:
+  swarm-net:
+    driver: bridge

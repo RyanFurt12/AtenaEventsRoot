@@ -7,9 +7,9 @@ services:
     container_name: atena-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB no .env (copie de .env.example)}
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # Porta 5432 não exposta ao host — acesso apenas interno via Docker network
@@ -49,14 +49,16 @@ services:
       DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      JWT_SECRET: ${JWT_SECRET}
-      API_URL: ${API_URL}
-      FRONTEND_URL: ${FRONTEND_URL}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:?defina SPRING_PROFILES_ACTIVE no .env, ex prod}"
+      JWT_SECRET: "${JWT_SECRET:?defina JWT_SECRET no .env, min 32 chars - openssl rand -base64 48}"
+      API_URL: "${API_URL:?defina API_URL no .env, ex http://localhost:8080}"
+      FRONTEND_URL: "${FRONTEND_URL:?defina FRONTEND_URL no .env, ex http://localhost:3000}"
+      # OAuth opcional — default 'disabled' espelha o fallback do Spring e evita
+      # quebrar o startup quando não configurado (compose injetaria vazio).
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-disabled}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-disabled}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-disabled}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-disabled}
       # Email — em produção, defina MAIL_* no .env apontando para um SMTP real.
       # Em dev, o docker-compose.override.yml sobrescreve para o MailHog.
       MAIL_HOST: ${MAIL_HOST:-}
