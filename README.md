@@ -9,18 +9,49 @@ Aplicação full-stack de gestão de eventos.
 
 Toda a orquestração é feita via Docker Compose. **Não é necessário instalar Java, Node ou Postgres na máquina** — apenas Docker.
 
-> Este repositório raiz contém a orquestração (Compose, `.env`, migração). Cada sub-projeto tem seu próprio README com instruções de execução isolada. Para rodar o sistema completo, use o Docker Compose daqui (seção 4).
+> Este repositório raiz contém a orquestração (Compose, `.env`, migração). Cada sub-projeto tem seu próprio README com instruções de execução isolada. Para rodar o sistema completo, use o Docker Compose daqui (seção 5).
 
 ---
 
 ## 1. Pré-requisitos
 
+- [Git](https://git-scm.com/)
 - [Docker](https://docs.docker.com/get-docker/) (com Docker Compose v2+)
 - Portas livres (em dev): `3000` (web), `8080` (API), `8025` (MailHog)
 
 ---
 
-## 2. Como os arquivos de configuração funcionam
+## 2. Clonar os repositórios
+
+O projeto está dividido em **três repositórios**. Clone primeiro o repositório raiz (este) e, **dentro dele**, clone a API e o Web. As pastas precisam ter exatamente os nomes `AtenaEventsAPI` e `AtenaEventsWeb` — é assim que o Docker Compose as referencia.
+
+```bash
+# 1. Repositório raiz (orquestração — Compose, .env, migração)
+git clone https://github.com/RyanFurt12/AtenaEventsRoot.git
+cd AtenaEventsRoot
+
+# 2. API (Spring Boot)
+git clone https://github.com/RyanFurt12/AtenaEventsAPI.git
+
+# 3. Web (React + Vite)
+git clone https://github.com/RyanFurt12/AtenaEventsWeb.git
+```
+
+Ao final, a estrutura deve ficar assim:
+
+```
+AtenaEventsRoot/
+├── AtenaEventsAPI/             ← clonado no passo 2
+├── AtenaEventsWeb/             ← clonado no passo 3
+├── docker-compose.yml
+├── docker-compose.override.yml
+├── .env.example
+└── db-init.sql
+```
+
+---
+
+## 3. Como os arquivos de configuração funcionam
 
 | Arquivo | Papel |
 |---|---|
@@ -30,11 +61,11 @@ Toda a orquestração é feita via Docker Compose. **Não é necessário instala
 | `.env.example` | Template documentado. Copie para `.env` e preencha. |
 | `db-init.sql` | Migração idempotente rodada pelo serviço `db-migrate` a cada subida. |
 
-> O Compose aplica o `override` automaticamente quando ele existe. Por isso, **dev é o comportamento padrão** e **produção exige passar `-f docker-compose.yml` explicitamente** para ignorar o override (ver seção 5).
+> O Compose aplica o `override` automaticamente quando ele existe. Por isso, **dev é o comportamento padrão** e **produção exige passar `-f docker-compose.yml` explicitamente** para ignorar o override (ver seção 6).
 
 ---
 
-## 3. Variáveis de ambiente (`.env`)
+## 4. Variáveis de ambiente (`.env`)
 
 Crie o `.env` a partir do template:
 
@@ -67,7 +98,7 @@ cp .env.example .env
 
 ---
 
-## 4. Rodar em desenvolvimento
+## 5. Rodar em desenvolvimento
 
 O comando padrão já usa o `override` (portas expostas + MailHog):
 
@@ -90,7 +121,7 @@ Parar tudo: `docker compose down` (adicione `-v` para apagar o volume do banco).
 
 ---
 
-## 5. Rodar em produção
+## 6. Rodar em produção
 
 Em produção você **não** quer o override (não expõe portas no host, usa SMTP real e a rede externa do Caddy). Passe o arquivo base explicitamente:
 
@@ -100,7 +131,7 @@ docker compose -f docker-compose.yml up -d --build
 
 Diferenças de produção:
 
-### 5.1. SMTP real (obrigatório para recuperação de senha)
+### 6.1. SMTP real (obrigatório para recuperação de senha)
 Defina no `.env` as variáveis `MAIL_*` apontando para um SMTP de verdade (Gmail, SendGrid, Amazon SES, etc.). Exemplo para Gmail com *app password*:
 
 ```dotenv
@@ -115,10 +146,10 @@ MAIL_FROM=no-reply@seu-dominio.com
 
 > O código não muda entre dev e prod — apenas as variáveis. O MailHog **não** sobe em produção (ele existe só no override).
 
-### 5.2. URLs e HTTPS
+### 6.2. URLs e HTTPS
 Use domínios reais em `API_URL` e `FRONTEND_URL` (com `https://`). Eles são usados para CORS, redirects de OAuth e para montar os links dos emails.
 
-### 5.3. Reverse proxy (Caddy)
+### 6.3. Reverse proxy (Caddy)
 No base, os serviços `api` e `web` **não expõem portas no host** — eles ficam atrás de um reverse proxy na rede externa `caddy_net`. Antes de subir:
 
 ```bash
@@ -141,7 +172,7 @@ O Caddy cuida do HTTPS automaticamente (Let's Encrypt). A API já está configur
 
 ---
 
-## 6. Configurar OAuth2 (Google e GitHub)
+## 7. Configurar OAuth2 (Google e GitHub)
 
 Necessário tanto em dev quanto em prod para o login social. Em cada console, cadastre as **Redirect URIs** abaixo (trocando `{API_URL}` pelo valor do seu `.env`):
 
@@ -157,7 +188,7 @@ Necessário tanto em dev quanto em prod para o login social. Em cada console, ca
 
 ---
 
-## 7. Banco de dados e migração
+## 8. Banco de dados e migração
 
 - O schema é gerenciado pelo Hibernate (`ddl-auto=update`) — as tabelas são criadas/atualizadas automaticamente.
 - O serviço `db-migrate` roda `db-init.sql` a cada subida (idempotente): ele remove o `NOT NULL` das colunas `email`/`password` em `users` (necessário para contas de convidado e OAuth).
@@ -165,7 +196,7 @@ Necessário tanto em dev quanto em prod para o login social. Em cada console, ca
 
 ---
 
-## 8. Comandos úteis
+## 9. Comandos úteis
 
 ```bash
 # Dev — subir com rebuild
@@ -195,7 +226,7 @@ cd AtenaEventsWeb && npm run lint
 
 ---
 
-## 9. Funcionalidades de conta (senha e email)
+## 10. Funcionalidades de conta (senha e email)
 
 - **Login/cadastro** por email+senha, ou via Google/GitHub (OAuth), ou como **convidado**.
 - **Trocar senha** (logado): `/home/settings` → *Privacidade e Segurança*. Exige a senha atual.
